@@ -1,0 +1,82 @@
+[
+  {
+    "drug_name": "Paracetamol 500 mg",
+    "category": "Analgesic",
+    "lot_number": "PCM001",
+    "quantity": 120,
+    "min_stock": 30,
+    "expiry_date": "2026-12-31"
+  },
+  {
+    "drug_name": "Amoxicillin 500 mg",
+    "category": "Antibiotic",
+    "lot_number": "AMX002",
+    "quantity": 20,
+    "min_stock": 50,
+    "expiry_date": "2026-09-15"
+  },
+  {
+    "drug_name": "Cetirizine 10 mg",
+    "category": "Antihistamine",
+    "lot_number": "CTZ003",
+    "quantity": 80,
+    "min_stock": 20,
+    "expiry_date": "2027-01-10"
+  },
+  {
+    "drug_name": "Ibuprofen 400 mg",
+    "category": "NSAID",
+    "lot_number": "IBU004",
+    "quantity": 15,
+    "min_stock": 25,
+    "expiry_date": "2026-08-20"
+  },
+  {
+    "drug_name": "Omeprazole 20 mg",
+    "category": "Gastrointestinal",
+    "lot_number": "OMP005",
+    "quantity": 60,
+    "min_stock": 20,
+    "expiry_date": "2026-07-30"
+  },
+  {
+    "drug_name": "Loratadine 10 mg",
+    "category": "Antihistamine",
+    "lot_number": "LOR006",
+    "quantity": 10,
+    "min_stock": 30,
+    "expiry_date": "2027-03-05"
+  },
+  {
+    "drug_name": "Metformin 500 mg",
+    "category": "Antidiabetic",
+    "lot_number": "MET007",
+    "quantity": 100,
+    "min_stock": 40,
+    "expiry_date": "2026-11-12"
+  },
+  {
+    "drug_name": "Amlodipine 5 mg",
+    "category": "Antihypertensive",
+    "lot_number": "AML008",
+    "quantity": 35,
+    "min_stock": 50,
+    "expiry_date": "2026-06-25"
+  },
+  {
+    "drug_name": "Salbutamol Inhaler",
+    "category": "Respiratory",
+    "lot_number": "SAL009",
+    "quantity": 18,
+    "min_stock": 15,
+    "expiry_date": "2026-10-01"
+  },
+  {
+    "drug_name": "ORS Powder",
+    "category": "Electrolyte",
+    "lot_number": "ORS010",
+    "quantity": 5,
+    "min_stock": 20,
+    "expiry_date": "2026-05-30"
+  }
+]

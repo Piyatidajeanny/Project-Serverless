@@ -9,6 +9,10 @@ app = Flask(__name__)
 
 DB_PATH = os.environ.get("DB_PATH", "medicine.db")
 
+# -----------------------------
+# Prometheus Metrics
+# -----------------------------
+
 REQUEST_COUNT = Counter(
     "http_requests_total",
     "Total HTTP requests",
@@ -21,10 +25,49 @@ REQUEST_LATENCY = Histogram(
     ["endpoint"]
 )
 
-DRUG_TOTAL = Gauge("drug_total", "Total number of drugs")
-EXPIRING_DRUG_TOTAL = Gauge("expiring_drug_total", "Total number of expiring drugs")
-LOW_STOCK_DRUG_TOTAL = Gauge("low_stock_drug_total", "Total number of low stock drugs")
+DRUG_TOTAL = Gauge(
+    "drug_total",
+    "Total number of drugs"
+)
 
+EXPIRING_DRUG_TOTAL = Gauge(
+    "expiring_drug_total",
+    "Total number of expiring drugs"
+)
+
+LOW_STOCK_DRUG_TOTAL = Gauge(
+    "low_stock_drug_total",
+    "Total number of low stock drugs"
+)
+
+MEDICINE_STOCK_QUANTITY = Gauge(
+    "medicine_stock_quantity",
+    "Current stock quantity of each medicine",
+    ["drug_name", "lot_number", "category", "expiry_date"]
+)
+
+MEDICINE_DAYS_TO_EXPIRY = Gauge(
+    "medicine_days_to_expiry",
+    "Days remaining until medicine expiry date",
+    ["drug_name", "lot_number", "category", "expiry_date"]
+)
+
+MEDICINE_LOW_STOCK_STATUS = Gauge(
+    "medicine_low_stock_status",
+    "Low stock status of each medicine, 1 means low stock",
+    ["drug_name", "lot_number", "category", "expiry_date"]
+)
+
+MEDICINE_EXPIRING_STATUS = Gauge(
+    "medicine_expiring_status",
+    "Expiring status of each medicine, 1 means expiring soon",
+    ["drug_name", "lot_number", "category", "expiry_date"]
+)
+
+
+# -----------------------------
+# Database
+# -----------------------------
 
 def get_connection():
     conn = sqlite3.connect(DB_PATH)
@@ -79,8 +122,60 @@ def update_business_metrics():
     EXPIRING_DRUG_TOTAL.set(expiring)
     LOW_STOCK_DRUG_TOTAL.set(low_stock)
 
+    cursor.execute("SELECT * FROM drugs")
+    medicine_rows = cursor.fetchall()
+
+    for row in medicine_rows:
+        drug_name = row["drug_name"]
+        lot_number = row["lot_number"]
+        category = row["category"]
+        expiry_date_text = row["expiry_date"]
+        quantity = row["quantity"]
+        min_stock = row["min_stock"]
+
+        try:
+            expiry_date = datetime.strptime(expiry_date_text, "%Y-%m-%d").date()
+        except ValueError:
+            continue
+
+        days_to_expiry = (expiry_date - today).days
+        is_low_stock = 1 if quantity <= min_stock else 0
+        is_expiring = 1 if expiry_date <= warning_date else 0
+
+        MEDICINE_STOCK_QUANTITY.labels(
+            drug_name=drug_name,
+            lot_number=lot_number,
+            category=category,
+            expiry_date=expiry_date_text
+        ).set(quantity)
+
+        MEDICINE_DAYS_TO_EXPIRY.labels(
+            drug_name=drug_name,
+            lot_number=lot_number,
+            category=category,
+            expiry_date=expiry_date_text
+        ).set(days_to_expiry)
+
+        MEDICINE_LOW_STOCK_STATUS.labels(
+            drug_name=drug_name,
+            lot_number=lot_number,
+            category=category,
+            expiry_date=expiry_date_text
+        ).set(is_low_stock)
+
+        MEDICINE_EXPIRING_STATUS.labels(
+            drug_name=drug_name,
+            lot_number=lot_number,
+            category=category,
+            expiry_date=expiry_date_text
+        ).set(is_expiring)
+
     conn.close()
 
+
+# -----------------------------
+# Request Monitoring
+# -----------------------------
 
 @app.before_request
 def before_request():
@@ -101,6 +196,10 @@ def after_request(response):
 
     return response
 
+
+# -----------------------------
+# Routes
+# -----------------------------
 
 @app.route("/", methods=["GET"])
 def home():
@@ -213,6 +312,14 @@ def update_drug(drug_id):
     quantity = data.get("quantity", existing["quantity"])
     min_stock = data.get("min_stock", existing["min_stock"])
     expiry_date = data.get("expiry_date", existing["expiry_date"])
+
+    try:
+        datetime.strptime(expiry_date, "%Y-%m-%d")
+    except ValueError:
+        conn.close()
+        return jsonify({
+            "error": "expiry_date must be in YYYY-MM-DD format"
+        }), 400
 
     cursor.execute("""
         UPDATE drugs
