@@ -1,0 +1,25 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: medicine-stock-api
+  labels:
+    app: medicine-stock-api
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: medicine-stock-api
+  template:
+    metadata:
+      labels:
+        app: medicine-stock-api
+    spec:
+      containers:
+        - name: medicine-stock-api
+          image: piyatida26/medicine-stock-api:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 5000
+          env:
+            - name: DB_PATH
+              value: "/app/medicine.db"
