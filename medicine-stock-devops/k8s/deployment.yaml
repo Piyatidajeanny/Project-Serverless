@@ -2,6 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: medicine-stock-api
+  namespace: medicine-stock
   labels:
     app: medicine-stock-api
 spec:
