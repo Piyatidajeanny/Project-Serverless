@@ -1,0 +1,25 @@
+{
+  "dashboard": {
+    "uid": "medicine-stock-table",
+    "title": "Medicine Stock Table",
+    "panels": [
+      {
+        "type": "table",
+        "title": "Medicine Stock Table",
+        "gridPos": { "x": 0, "y": 0, "w": 24, "h": 8 },
+        "id": 1,
+        "options": { "showHeader": true, "sortBy": [{ "displayName": "Value", "desc": true }] },
+        "targets": [
+          {
+            "expr": "medicine_stock_quantity",
+            "refId": "A",
+            "datasource": { "uid": "afm11aygm55a8f" }
+          }
+        ]
+      }
+    ],
+    "schemaVersion": 36,
+    "version": 1
+  },
+  "overwrite": true
+}

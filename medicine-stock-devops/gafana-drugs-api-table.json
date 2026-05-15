@@ -1,0 +1,37 @@
+{
+  "dashboard": {
+    "uid": "medicine-stock-drugs-api",
+    "title": "Medicine Stock (API Table)",
+    "panels": [
+      {
+        "type": "table",
+        "title": "Medicine Stock (from /drugs)",
+        "gridPos": { "x": 0, "y": 0, "w": 24, "h": 8 },
+        "id": 1,
+        "options": { "showHeader": true },
+        "targets": [
+          {
+            "refId": "A",
+            "type": "infinity",
+            "datasource": { "uid": "dfm1536nb25moa" },
+            "query": {
+              "url": "http://host.docker.internal:5000/drugs",
+              "format": "json",
+              "rootSelector": "$",
+              "columns": [
+                { "text": "drug_name", "type": "string" },
+                { "text": "lot_number", "type": "string" },
+                { "text": "quantity", "type": "number" },
+                { "text": "min_stock", "type": "number" },
+                { "text": "expiry_date", "type": "string" }
+              ]
+            }
+          }
+        ]
+      }
+    ],
+    "schemaVersion": 36,
+    "version": 1
+  },
+  "overwrite": true
+}

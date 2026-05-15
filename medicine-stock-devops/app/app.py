@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, render_template
 from prometheus_client import Counter, Histogram, Gauge, generate_latest, CONTENT_TYPE_LATEST
 from datetime import datetime, timedelta
 import sqlite3
@@ -429,6 +429,11 @@ def get_low_stock_drugs():
 def metrics():
     update_business_metrics()
     return generate_latest(), 200, {"Content-Type": CONTENT_TYPE_LATEST}
+
+
+@app.route("/drugs-ui", methods=["GET"])
+def drugs_ui():
+    return render_template("drugs_table.html")
 
 
 if __name__ == "__main__":
