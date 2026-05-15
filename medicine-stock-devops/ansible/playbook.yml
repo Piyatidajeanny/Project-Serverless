@@ -1,1 +1,95 @@
----\n# Ansible Playbook for Medicine Stock DevOps\n# Purpose: Configure Kubernetes environment, setup monitoring, deploy application\n\nname: Medicine Stock Kubernetes Setup\nhosts: kubernetes\nbecome: no\ngather_facts: yes\n\nvars:\n  namespace: \"medicine-stock\"\n  docker_image: \"medicine-stock:latest\"\n  app_name: \"medicine-stock-api\"\n  prometheus_namespace: \"prometheus\"\n\npre_tasks:\n  - name: Display playbook information\n    debug:\n      msg:\n        - \"Playbook: Medicine Stock DevOps Configuration\"\n        - \"Target: {{ inventory_hostname }}\"\n        - \"Namespace: {{ namespace }}\"\n\ntasks:\n  # ============================================\n  # 1. Check Prerequisites\n  # ============================================\n  - name: Check kubectl availability\n    command: kubectl version --client\n    register: kubectl_version\n    changed_when: false\n    ignore_errors: yes\n\n  - name: Display kubectl version\n    debug:\n      msg: \"kubectl: {{ kubectl_version.stdout }}\"\n    when: kubectl_version.rc == 0\n\n  - name: Check Kubernetes cluster connectivity\n    command: kubectl cluster-info\n    register: k8s_cluster_info\n    changed_when: false\n    ignore_errors: yes\n\n  - name: Display cluster info\n    debug:\n      msg: \"{{ k8s_cluster_info.stdout_lines }}\"\n    when: k8s_cluster_info.rc == 0\n\n  # ============================================\n  # 2. Initialize Terraform\n  # ============================================\n  - name: Initialize Terraform\n    command: terraform init\n    args:\n      chdir: \"{{ playbook_dir }}/../terraform\"\n    register: terraform_init\n    changed_when: \"'Terraform initialized' in terraform_init.stdout or 'already been initialized' in terraform_init.stdout\"\n\n  - name: Validate Terraform configuration\n    command: terraform validate\n    args:\n      chdir: \"{{ playbook_dir }}/../terraform\"\n    register: terraform_validate\n\n  - name: Display Terraform validation result\n    debug:\n      msg: \"{{ terraform_validate.stdout }}\"\n\n  # ============================================\n  # 3. Plan and Apply Terraform\n  # ============================================\n  - name: Terraform plan\n    command: terraform plan -out=tfplan\n    args:\n      chdir: \"{{ playbook_dir }}/../terraform\"\n    register: terraform_plan\n    changed_when: \"'will be created' in terraform_plan.stdout or 'will be modified' in terraform_plan.stdout\"\n\n  - name: Terraform apply\n    command: terraform apply -auto-approve tfplan\n    args:\n      chdir: \"{{ playbook_dir }}/../terraform\"\n    register: terraform_apply\n\n  - name: Get Terraform outputs\n    command: terraform output -json\n    args:\n      chdir: \"{{ playbook_dir }}/../terraform\"\n    register: terraform_outputs\n    changed_when: false\n\n  - name: Display Terraform outputs\n    debug:\n      msg: \"{{ terraform_outputs.stdout | from_json }}\"\n\n  # ============================================\n  # 4. Verify Namespace Creation\n  # ============================================\n  - name: Get namespace details\n    command: kubectl get namespace {{ namespace }} -o json\n    register: ns_info\n    changed_when: false\n\n  - name: Display namespace info\n    debug:\n      msg: \"{{ ns_info.stdout | from_json }}\"\n\n  # ============================================\n  # 5. Verify RBAC Setup\n  # ============================================\n  - name: Check ServiceAccount\n    command: kubectl get serviceaccount medicine-stock-sa -n {{ namespace }} -o json\n    register: sa_info\n    changed_when: false\n    ignore_errors: yes\n\n  - name: Check Role\n    command: kubectl get role medicine-stock-role -n {{ namespace }} -o json\n    register: role_info\n    changed_when: false\n    ignore_errors: yes\n\n  - name: Check RoleBinding\n    command: kubectl get rolebinding medicine-stock-role-binding -n {{ namespace }} -o json\n    register: rb_info\n    changed_when: false\n    ignore_errors: yes\n\n  - name: Display RBAC status\n    debug:\n      msg:\n        - \"ServiceAccount: {{ (sa_info.stdout | from_json).metadata.name if sa_info.rc == 0 else 'Not found' }}\"\n        - \"Role: {{ (role_info.stdout | from_json).metadata.name if role_info.rc == 0 else 'Not found' }}\"\n        - \"RoleBinding: {{ (rb_info.stdout | from_json).metadata.name if rb_info.rc == 0 else 'Not found' }}\"\n\n  # ============================================\n  # 6. Install/Verify Prometheus (Optional)\n  # ============================================\n  - name: Check if Prometheus namespace exists\n    command: kubectl get namespace prometheus\n    register: prometheus_ns\n    changed_when: false\n    ignore_errors: yes\n\n  - name: Create Prometheus namespace (if needed)\n    command: kubectl create namespace prometheus\n    when: prometheus_ns.rc != 0\n    ignore_errors: yes\n\n  - name: Display Prometheus namespace status\n    debug:\n      msg: \"Prometheus namespace ready\"\n\n  # ============================================\n  # 7. List Deployed Resources\n  # ============================================\n  - name: List all resources in namespace\n    command: kubectl get all -n {{ namespace }}\n    register: resources\n    changed_when: false\n\n  - name: Display resources\n    debug:\n      msg: \"{{ resources.stdout }}\"\n\n  # ============================================\n  # 8. Verify Connectivity\n  # ============================================\n  - name: Check network policies\n    command: kubectl get networkpolicies -n {{ namespace }}\n    register: netpol\n    changed_when: false\n    ignore_errors: yes\n\n  - name: Display network policies\n    debug:\n      msg: \"{{ netpol.stdout }}\"\n    when: netpol.rc == 0\n\npost_tasks:\n  - name: Display setup summary\n    debug:\n      msg:\n        - \"================================================\"\n        - \"✓ Kubernetes Infrastructure Setup Complete\"\n        - \"================================================\"\n        - \"Namespace: {{ namespace }}\"\n        - \"Environment: {{ ansible_env.USER | default('unknown') }}\"\n        - \"Date: {{ ansible_date_time.iso8601 }}\"\n        - \"\"\n        - \"Next steps:\"\n        - \"1. Deploy application: kubectl apply -f k8s/deployment.yaml\"\n        - \"2. Expose service: kubectl apply -f k8s/service.yaml\"\n        - \"3. Monitor pods: kubectl get pods -n {{ namespace }} -w\"\n        - \"4. View logs: kubectl logs -f deployment/medicine-stock -n {{ namespace }}\"\n\nhandlers:\n  - name: Restart Kubernetes\n    command: systemctl restart kubelet\n    become: yes\n
+---
+# Ansible Playbook for Medicine Stock DevOps
+# Purpose: Configure Kubernetes environment, setup monitoring, deploy application
+- name: Medicine Stock Kubernetes Setup
+  hosts: kubernetes
+  become: no
+  gather_facts: yes
+
+  vars:
+    namespace: "medicine-stock"  
+    docker_image: "medicine-stock:latest"
+    app_name: "medicine-stock-api"
+    prometheus_namespace: "prometheus"
+    terraform_path: "{{ playbook_dir }}/../terraform"
+    
+  pre_tasks:
+    - name: Display playbook information
+      debug:
+        msg:
+          - "Playbook: Medicine Stock DevOps Configuration"
+          - "Target: {{ inventory_hostname }}"
+          - "Namespace: {{ namespace }}"
+                                        
+  tasks:
+    # ============================================
+    # 1. Check Prerequisites
+    # ============================================
+    - name: Check kubectl availability
+      command: kubectl version --client
+      register: kubectl_version
+      changed_when: false
+      ignore_errors: yes
+
+    - name: Display kubectl version
+      debug:
+        msg: "kubectl: {{ kubectl_version.stdout }}"
+      when: kubectl_version.rc == 0
+
+    - name: Check Kubernetes cluster connectivity
+      command: kubectl cluster-info
+      register: k8s_cluster_info
+      changed_when: false
+      ignore_errors: yes
+
+    - name: Display cluster info
+      debug:
+        msg: "{{ k8s_cluster_info.stdout_lines }}"
+      when: k8s_cluster_info.rc == 0
+
+    # ============================================
+    # 2. Initialize Terraform
+    # ============================================
+    - name: Initialize Terraform
+      command: terraform init
+      args:
+        chdir: "{{ terraform_path }}"
+      register: terraform_init
+      changed_when: "'Terraform initialized' in terraform_init.stdout or 'already been initialized' in terraform_init.stdout"
+
+    - name: Validate Terraform configuration
+      command: terraform validate
+      args:
+        chdir: "{{ terraform_path }}"
+      register: terraform_validate
+
+    - name: Display Terraform validation result
+      debug:
+        msg: "{{ terraform_validate.stdout }}"
+
+    # ============================================
+    # 3. Plan and Apply Terraform
+    # ============================================
+    - name: Terraform plan
+      command: terraform plan -out=tfplan
+      args:
+        chdir: "{{ terraform_path }}"
+      register: terraform_plan
+      changed_when: "'will be created' in terraform_plan.stdout or 'will be modified' in terraform_plan.stdout"
+
+    - name: Terraform apply
+      command: terraform apply -auto-approve tfplan
+      args:
+        chdir: "{{ terraform_path }}"
+      register: terraform_apply
+
+    - name: Get Terraform outputs
+      command: terraform output -json
+      args:
+        chdir: "{{ terraform_path }}"
+      register: terraform_outputs
+      changed_when: false
+
+    - name: Display Terraform outputs
+      debug:
+        msg: "{{ terraform_outputs.stdout | from_json }}"

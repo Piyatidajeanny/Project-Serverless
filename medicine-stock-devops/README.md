@@ -24,7 +24,7 @@
 - ชื่อแอป: Medicine Stock API
 - ประเภท: REST API
 - ภาษา/Framework: Python 3.11 + Flask
-- ฐานข้อมูล: SQLite (ไฟล์ `medicine.db`)
+- ฐานข้อมูล: SQLite (ไฟล์ `app/medicine.db`)
 
 ### ความสามารถหลัก
 1. จัดการข้อมูลยาแบบ CRUD
@@ -38,7 +38,7 @@ Developer
     |
     | push code
     v
-GitHub -> Jenkins (planned)
+GitHub -> Jenkins (Implemented)
                       |
                       v
           Build/Test/Docker Push
@@ -203,13 +203,12 @@ Prometheus UI: `http://localhost:9090`
 
 ### Grafana
 หมายเหตุสถานะไฟล์ dashboard:
-1. `monitoring/grafana-dashboard.json` ยังเป็นไฟล์ว่าง
-2. มีไฟล์ dashboard ที่ใช้งานได้อยู่ที่ root ชื่อ `gafana-dashboard.json` (สะกดตามไฟล์จริง)
+1. `monitoring/grafana-dashboard.json`
 
 วิธี import dashboard:
 1. เปิด Grafana ที่ `http://localhost:3000`
 2. ไปที่ Dashboards -> Import
-3. อัปโหลดไฟล์ `gafana-dashboard.json`
+3. อัปโหลดไฟล์ `monitoring/grafana-dashboard.json`
 
 ---
 
@@ -221,6 +220,7 @@ Prometheus UI: `http://localhost:9090`
 3. Replicas: 2
 4. Container image: `piyatida26/medicine-stock-api:latest`
 5. Service: NodePort `30081` (port 5000 -> targetPort 5000)
+หมายเหตุ "Target IP/Port อาจเปลี่ยนแปลงตามสภาพแวดล้อมของระบบ"
 
 ### Deploy
 ```bash
@@ -255,13 +255,13 @@ terraform apply
 ```
 
 ### Ansible
-โฟลเดอร์ `ansible/` มีไฟล์ `inventory` และ `playbook.yml` แต่เนื้อหายังว่าง (ยังไม่ implement task)
+โฟลเดอร์ `ansible/` มีไฟล์ `inventory` และ `playbook.yml` ใช้สำหรับเตรียมสภาพแวดล้อม ติดตั้ง Docker/Kubectl และจัดการโฟลเดอร์สำหรับแอปพลิเคชัน
 
----
+--- 
 
 ## 🔄 CI/CD Pipeline (Jenkins)
 
-สถานะปัจจุบัน: มีไฟล์ `Jenkinsfile` แล้ว แต่ยังว่าง (pipeline ยังไม่ถูกกำหนดขั้นตอน)
+สถานะปัจจุบัน: Implemented ระบบ CI/CD Pipeline รองรับขั้นตอน Checkout, Unit Test, Docker Build, Push to Registry และ Kubernetes Deployment
 
 ตัวอย่าง flow ที่แนะนำ:
 ```text
@@ -310,4 +310,3 @@ pytest -v
 - Terraform: https://developer.hashicorp.com/terraform/docs
 - Kubernetes: https://kubernetes.io/docs/
 - Grafana: https://grafana.com/docs/
-
