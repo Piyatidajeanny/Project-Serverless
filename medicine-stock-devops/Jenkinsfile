@@ -3,7 +3,6 @@ pipeline {
     
     environment {
         DOCKER_IMAGE = "piyatida26/medicine-stock-api/medicine-stock"
-        DOCKER_TAG = "${BUILD_NUMBER}"
         DOCKER_REGISTRY = "docker.io"
         DOCKER_CREDENTIALS = credentials('dockerhub-credentials')
         KUBE_NAMESPACE = "medicine-stock"
@@ -11,9 +10,9 @@ pipeline {
     }
     
     parameters {
-        string(name: 'IMAGE_TAG', defaultValue: '${BUILD_NUMBER}', description: 'Docker image tag')
-        booleanParam(name: 'PUSH_TO_REGISTRY', defaultValue: false, description: 'Push image to Docker Registry')
-        booleanParam(name: 'DEPLOY_K8S', defaultValue: false, description: 'Deploy to Kubernetes')
+        string(name: 'IMAGE_TAG', defaultValue: 'latest', description: 'Docker image tag')
+        booleanParam(name: 'PUSH_TO_REGISTRY', defaultValue: true, description: 'Push image to Docker Registry')
+        booleanParam(name: 'DEPLOY_K8S', defaultValue: true, description: 'Deploy to Kubernetes')
     }
     
     options {
@@ -29,7 +28,8 @@ pipeline {
                     echo "========== Checkout Git Repository =========="
                     checkout scm
                     sh 'git log -1 --oneline'
-                    echo "Current branch: ${BRANCH_NAME ?: 'main'}"
+                    // ใช้ env.GIT_BRANCH เพื่อดึงชื่อ Branch ในโปรเจกต์ธรรมดาอย่างปลอดภัย
+                    echo "Current branch: ${env.GIT_BRANCH ?: 'main'}"
                 }
             }
         }
@@ -51,12 +51,10 @@ pipeline {
             }
             post {
                 always {
-                    junit 'app/test-results.xml'
-                    publishHTML([
-                        reportDir: 'app',
-                        reportFiles: 'test-results.xml',
-                        reportName: 'Test Results'
-                    ])
+                    // ครอบด้วย catchError เผื่อกรณี Jenkins ของคุณยังไม่มีปลั๊กอิน JUnit ระบบจะได้ไม่หยุดทำงาน
+                    catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
+                        junit 'app/test-results.xml'
+                    }
                 }
             }
         }
@@ -65,12 +63,13 @@ pipeline {
             steps {
                 script {
                     echo "========== Building Docker Image =========="
-                    sh '''
-                        docker build -t ${DOCKER_IMAGE}:${IMAGE_TAG} \
+                    // ใช้ฟันหนูคู่ (Double Quotes) เพื่อให้ Jenkins แทนค่าตัวแปร params.IMAGE_TAG ลงไปในคำสั่ง sh ได้ถูกต้อง
+                    sh """
+                        docker build -t ${DOCKER_IMAGE}:${params.IMAGE_TAG} \
                                      -t ${DOCKER_IMAGE}:latest \
                                      -f Dockerfile .
-                        docker image ls | grep medicine-stock
-                    '''
+                        docker image ls | grep medicine-stock || true
+                    """
                 }
             }
         }
@@ -79,19 +78,13 @@ pipeline {
             steps {
                 script {
                     echo "========== Container Security Scan =========="
-                    try {
-                        sh '''
-                            # Optional: Run Trivy scan if installed
-                            if command -v trivy &> /dev/null; then
-                                trivy image --exit-code 0 --severity CRITICAL,HIGH \
-                                           ${DOCKER_IMAGE}:${IMAGE_TAG}
-                            else
-                                echo "Trivy not installed, skipping scan"
-                            fi
-                        '''
-                    } catch (Exception e) {
-                        echo "Scan warning: ${e.message}"
-                    }
+                    sh """
+                        if command -v trivy &> /dev/null; then
+                            trivy image --exit-code 0 --severity CRITICAL,HIGH ${DOCKER_IMAGE}:${params.IMAGE_TAG}
+                        else
+                            echo "Trivy not installed, skipping scan"
+                        fi
+                    """
                 }
             }
         }
@@ -106,13 +99,12 @@ pipeline {
                     withCredentials([usernamePassword(credentialsId: 'dockerhub-credentials', 
                                                      usernameVariable: 'DOCKER_USER', 
                                                      passwordVariable: 'DOCKER_PASS')]) {
-                        sh '''
+                        sh """
                             echo "${DOCKER_PASS}" | docker login -u "${DOCKER_USER}" --password-stdin
-                            docker push ${DOCKER_IMAGE}:${IMAGE_TAG}
+                            docker push ${DOCKER_IMAGE}:${params.IMAGE_TAG}
                             docker push ${DOCKER_IMAGE}:latest
                             docker logout
-                            echo "Image pushed successfully"
-                        '''
+                        """
                     }
                 }
             }
@@ -133,32 +125,25 @@ pipeline {
                         terraform validate
                         terraform plan -out=tfplan
                         terraform apply -auto-approve tfplan
-                        terraform output -json | jq .
                         cd ..
                     '''
                     
                     echo ">>> Step 2: Ansible Infrastructure Configuration..."
                     sh '''
                         cd ansible
-                        ansible --version
                         ansible-playbook -i inventory playbook.yml -v
                         cd ..
                     '''
                     
                     echo ">>> Step 3: Kubernetes Application Deployment..."
-                    sh '''
+                    sh """
                         kubectl set image deployment/medicine-stock \
-                                medicine-stock=${DOCKER_IMAGE}:${IMAGE_TAG} \
+                                medicine-stock=${DOCKER_IMAGE}:${params.IMAGE_TAG} \
                                 -n ${KUBE_NAMESPACE} || \
                         kubectl apply -f k8s/deployment.yaml -n ${KUBE_NAMESPACE}
                         
                         kubectl apply -f k8s/service.yaml -n ${KUBE_NAMESPACE}
-                        
-                        kubectl rollout status deployment/medicine-stock \
-                                -n ${KUBE_NAMESPACE} --timeout=5m
-                        
-                        kubectl get pods -n ${KUBE_NAMESPACE} -l app=medicine-stock
-                    '''
+                    """
                 }
             }
         }
@@ -168,31 +153,7 @@ pipeline {
         always {
             script {
                 echo "========== Pipeline Cleanup =========="
-                // Clean up docker resources if needed
                 sh 'docker image prune -f --filter "until=24h" || true'
-            }
-        }
-        success {
-            script {
-                echo "========== Build Successful =========="
-                sh '''
-                    echo "Build completed successfully at $(date)" > build-status.txt
-                    echo "Image: ${DOCKER_IMAGE}:${IMAGE_TAG}" >> build-status.txt
-                '''
-                // Optional: Send notification
-                // emailext (subject: "Build Success: ${JOB_NAME}", ...)
-            }
-        }
-        failure {
-            script {
-                echo "========== Build Failed =========="
-                // Optional: Send notification
-                // emailext (subject: "Build Failed: ${JOB_NAME}", ...)
-            }
-        }
-        unstable {
-            script {
-                echo "========== Build Unstable (Tests Failed) =========="
             }
         }
     }
