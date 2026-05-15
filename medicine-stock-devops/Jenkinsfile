@@ -37,11 +37,13 @@ pipeline {
         stage('2. Unit Test') {
             steps {
                 script {
-                    echo "========== Running Unit Tests =========="
+                    echo "========== Preparing Environment & Running Tests =========="
                     try {
+                        // สั่งอัปเดตและลง python3-pytest สดๆ ในสเตจนี้เลย
                         sh '''
+                            apt-get update && apt-get install -y python3-pytest python3-pip || true
                             cd medicine-stock-devops/app
-                            python -m pytest test_app.py -v --tb=short --junit-xml=test-results.xml
+                            pytest test_app.py -v --tb=short --junit-xml=test-results.xml
                         '''
                     } catch (Exception e) {
                         echo "Tests failed: ${e.message}"
@@ -51,7 +53,6 @@ pipeline {
             }
             post {
                 always {
-                    // ครอบด้วย catchError เผื่อกรณี Jenkins ของคุณยังไม่มีปลั๊กอิน JUnit ระบบจะได้ไม่หยุดทำงาน
                     catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
                         junit 'medicine-stock-devops/app/test-results.xml'
                     }
@@ -62,13 +63,15 @@ pipeline {
         stage('3. Build Docker Image') {
             steps {
                 script {
-                    echo "========== Building Docker Image =========="
-                    // ใช้ฟันหนูคู่ (Double Quotes) เพื่อให้ Jenkins แทนค่าตัวแปร params.IMAGE_TAG ลงไปในคำสั่ง sh ได้ถูกต้อง
+                    echo "========== Installing Docker CLI & Building Image =========="
+                    // สั่งลง Docker CLI สดๆ ก่อนสั่ง Build
                     sh """
+                        apt-get update && apt-get install -y docker.io || true
                         cd medicine-stock-devops
                         docker build -t ${DOCKER_IMAGE}:${params.IMAGE_TAG} \
-                                    -t ${DOCKER_IMAGE}:latest \
-                                    -f Dockerfile .
+                                     -t ${DOCKER_IMAGE}:latest \
+                                     -f Dockerfile .
+                        docker image ls | grep medicine-stock || true
                     """
                 }
             }
