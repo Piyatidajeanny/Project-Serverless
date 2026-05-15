@@ -2,8 +2,8 @@ pipeline {
     agent any
     
     environment {
-        DOCKER_IMAGE = "piyatida26/medicine-stock-api/medicine-stock"
-        DOCKER_REGISTRY = "docker.io"
+        DOCKER_IMAGE = "natthaphong4101/medicine-stock" 
+    DOCKER_REGISTRY = "docker.io"
         DOCKER_CREDENTIALS = credentials('dockerhub-credentials')
         KUBE_NAMESPACE = "medicine-stock"
         DB_PATH = "/app/medicine.db"
