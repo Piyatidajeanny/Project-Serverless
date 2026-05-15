@@ -39,22 +39,15 @@ pipeline {
                 script {
                     echo "========== Preparing Environment & Running Tests =========="
                     try {
-                        // สั่งอัปเดตและลง python3-pytest สดๆ ในสเตจนี้เลย
                         sh '''
                             apt-get update && apt-get install -y python3-pytest python3-pip || true
                             cd medicine-stock-devops/app
+                            pip3 install -r requirements.txt --break-system-packages || pip3 install flask pytest requests || true
                             pytest test_app.py -v --tb=short --junit-xml=test-results.xml
                         '''
                     } catch (Exception e) {
                         echo "Tests failed: ${e.message}"
                         currentBuild.result = 'UNSTABLE'
-                    }
-                }
-            }
-            post {
-                always {
-                    catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
-                        junit 'medicine-stock-devops/app/test-results.xml'
                     }
                 }
             }
@@ -81,11 +74,12 @@ pipeline {
             steps {
                 script {
                     echo "========== Container Security Scan =========="
+                    // ใช้ตัวแปรสคริปต์ตรวจสอบก่อนส่งเข้าคำสั่ง sh
                     sh """
-                        if command -v trivy &> /dev/null; then
+                        if [ -x "\$(command -v trivy)" ]; then
                             trivy image --exit-code 0 --severity CRITICAL,HIGH ${DOCKER_IMAGE}:${params.IMAGE_TAG}
                         else
-                            echo "Trivy not installed, skipping scan"
+                            echo "Trivy is not installed in Jenkins environment, skipping scan."
                         fi
                     """
                 }
