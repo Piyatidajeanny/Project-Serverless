@@ -1,0 +1,38 @@
+﻿{
+    "id":  1233627705958400,
+    "panels":  [
+                   {
+                       "gridPos":  {
+                                       "h":  8,
+                                       "w":  24,
+                                       "x":  0,
+                                       "y":  0
+                                   },
+                       "id":  1,
+                       "options":  {
+                                       "showHeader":  true,
+                                       "sortBy":  [
+                                                      {
+                                                          "desc":  true,
+                                                          "displayName":  "Value"
+                                                      }
+                                                  ]
+                                   },
+                       "targets":  [
+                                       {
+                                           "datasource":  {
+                                                              "uid":  "afm11aygm55a8f"
+                                                          },
+                                           "expr":  "medicine_stock_quantity",
+                                           "refId":  "A"
+                                       }
+                                   ],
+                       "title":  "Medicine Stock Table",
+                       "type":  "table"
+                   }
+               ],
+    "schemaVersion":  36,
+    "title":  "Medicine Stock Table",
+    "uid":  "medicine-stock-table",
+    "version":  1
+}

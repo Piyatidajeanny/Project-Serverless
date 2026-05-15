@@ -1,0 +1,86 @@
+version: '3.9'
+
+services:
+  # Flask Medicine Stock API
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: medicine-stock-app
+    ports:
+      - "5000:5000"
+    environment:
+      - DB_PATH=/app/medicine.db
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - ./app/medicine.db:/app/medicine.db
+      - ./app:/app:ro
+    networks:
+      - medicine-stock-net
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:5000/', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+    depends_on:
+      - db
+    restart: unless-stopped
+
+  # SQLite Database (volume-based)
+  db:
+    image: alpine:latest
+    container_name: medicine-stock-db
+    volumes:
+      - medicine-db:/app
+    command: tail -f /dev/null
+    networks:
+      - medicine-stock-net
+    restart: unless-stopped
+
+  # Prometheus for metrics collection
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: medicine-stock-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+    networks:
+      - medicine-stock-net
+    depends_on:
+      - app
+    restart: unless-stopped
+
+  # Grafana for dashboards
+  grafana:
+    image: grafana/grafana-oss:latest
+    container_name: medicine-stock-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_INSTALL_PLUGINS=yesoreyeram-infinity-datasource
+    volumes:
+      - grafana-storage:/var/lib/grafana
+    networks:
+      - medicine-stock-net
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+
+volumes:
+  medicine-db:
+    driver: local
+  prometheus-data:
+    driver: local
+  grafana-storage:
+    driver: local
+
+networks:
+  medicine-stock-net:
+    driver: bridge

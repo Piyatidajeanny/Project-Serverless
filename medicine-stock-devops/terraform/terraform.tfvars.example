@@ -1,0 +1,1 @@
+# Terraform Variables for Local Development\n# Copy this to terraform.tfvars and update values\n\nnamespace        = \"medicine-stock\"\nkubeconfig_path  = \"~/.kube/config\"\nenvironment      = \"development\"\nlog_level        = \"DEBUG\"\ndocker_username  = \"\"  # Set your Docker Hub username\ndocker_password  = \"\"  # Set your Docker Hub password or token\n

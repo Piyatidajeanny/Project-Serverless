@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Medicine Stock - Drugs</title>
+    <link rel="stylesheet" href="/static/drugs.css">
+  </head>
+  <body>
+    <div class="container">
+      <h1>Medicine Stock — Drugs</h1>
+      <div id="controls">
+        <label>Search: <input id="q" placeholder="search name or lot" /></label>
+        <button id="refresh">Refresh</button>
+      </div>
+      <div id="table-wrap">
+        <table id="drugs-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Name</th>
+              <th>Lot</th>
+              <th>Quantity</th>
+              <th>Min Stock</th>
+              <th>Expiry</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div id="status"></div>
+    </div>
+    <script src="/static/drugs.js"></script>
+  </body>
+</html>
