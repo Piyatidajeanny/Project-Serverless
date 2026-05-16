@@ -117,19 +117,19 @@ pipeline {
                     
                     echo ">>> Step 1: Terraform Infrastructure Provisioning..."
                     sh '''
-                        cd terraform
+                        cd medicine-stock-devops/terraform
                         terraform init
                         terraform validate
                         terraform plan -out=tfplan
                         terraform apply -auto-approve tfplan
-                        cd ..
+                        cd ../..
                     '''
                     
                     echo ">>> Step 2: Ansible Infrastructure Configuration..."
                     sh '''
-                        cd ansible
+                        cd medicine-stock-devops/ansible
                         ansible-playbook -i inventory playbook.yml -v
-                        cd ..
+                        cd ../..
                     '''
                     
                     echo ">>> Step 3: Kubernetes Application Deployment..."
@@ -137,9 +137,9 @@ pipeline {
                         kubectl set image deployment/medicine-stock \
                                 medicine-stock=${DOCKER_IMAGE}:${params.IMAGE_TAG} \
                                 -n ${KUBE_NAMESPACE} || \
-                        kubectl apply -f k8s/deployment.yaml -n ${KUBE_NAMESPACE}
+                        kubectl apply -f medicine-stock-devops/k8s/deployment.yaml -n ${KUBE_NAMESPACE}
                         
-                        kubectl apply -f k8s/service.yaml -n ${KUBE_NAMESPACE}
+                        kubectl apply -f medicine-stock-devops/k8s/service.yaml -n ${KUBE_NAMESPACE}
                     """
                 }
             }
