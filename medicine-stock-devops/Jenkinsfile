@@ -7,6 +7,7 @@ pipeline {
         DOCKER_REGISTRY = "docker.io"
         KUBE_NAMESPACE = "default"
         DB_PATH = "/app/medicine.db"
+        PROJECT_DIR = "medicine-stock-devops"
     }
     
     parameters {
@@ -39,7 +40,7 @@ pipeline {
                     echo "========== Running Unit Tests =========="
                     try {
                         sh '''
-                            cd app
+                            cd ${PROJECT_DIR}/app
                             python -m pytest test_app.py -v --tb=short --junit-xml=test-results.xml
                         '''
                     } catch (Exception e) {
@@ -50,11 +51,12 @@ pipeline {
             }
             post {
                 always {
-                    junit 'app/test-results.xml'
+                    junit testResults: "${PROJECT_DIR}/app/test-results.xml", allowEmptyResults: true
                     publishHTML([
-                        reportDir: 'app',
+                        reportDir: "${PROJECT_DIR}/app",
                         reportFiles: 'test-results.xml',
-                        reportName: 'Test Results'
+                        reportName: 'Test Results',
+                        allowMissing: true
                     ])
                 }
             }
@@ -70,7 +72,7 @@ pipeline {
                         sh '''
                             docker build -t ${DOCKER_IMAGE}:${IMAGE_TAG} \
                                          -t ${DOCKER_IMAGE}:latest \
-                                         -f Dockerfile .
+                                         -f ${PROJECT_DIR}/Dockerfile ${PROJECT_DIR}
                             docker image ls | grep medicine-stock
                         '''
                     }
@@ -131,7 +133,7 @@ pipeline {
                     
                     echo ">>> Step 1: Terraform Infrastructure Provisioning..."
                     sh '''
-                        cd terraform
+                        cd ${PROJECT_DIR}/terraform
                         terraform init
                         terraform validate
                         terraform plan -out=tfplan
@@ -142,7 +144,7 @@ pipeline {
                     
                     echo ">>> Step 2: Ansible Infrastructure Configuration..."
                     sh '''
-                        cd ansible
+                        cd ${PROJECT_DIR}/ansible
                         ansible --version
                         ansible-playbook -i inventory playbook.yml -v
                         cd ..
@@ -153,9 +155,9 @@ pipeline {
                         kubectl set image deployment/medicine-stock \
                                 medicine-stock=${DOCKER_IMAGE}:${IMAGE_TAG} \
                                 -n ${KUBE_NAMESPACE} || \
-                        kubectl apply -f k8s/deployment.yaml -n ${KUBE_NAMESPACE}
+                        kubectl apply -f ${PROJECT_DIR}/k8s/deployment.yaml -n ${KUBE_NAMESPACE}
                         
-                        kubectl apply -f k8s/service.yaml -n ${KUBE_NAMESPACE}
+                        kubectl apply -f ${PROJECT_DIR}/k8s/service.yaml -n ${KUBE_NAMESPACE}
                         
                         kubectl rollout status deployment/medicine-stock \
                                 -n ${KUBE_NAMESPACE} --timeout=5m
