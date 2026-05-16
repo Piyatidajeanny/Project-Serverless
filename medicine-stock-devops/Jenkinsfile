@@ -119,13 +119,14 @@ pipeline {
                     sh '''
                         apt-get update && apt-get install -y curl unzip jq python3-pip python3-venv || true
                         
-                        # 1. ติดตั้ง Terraform แบบดาวน์โหลดตรง (เลี่ยงปัญหา Repository บั๊ก)
+                        # 1. ติดตั้ง Terraform แบบดาวน์โหลดตรง
                         if ! command -v terraform &> /dev/null; then
                             echo "Downloading Terraform Binary..."
                             curl -LO https://releases.hashicorp.com/terraform/1.8.5/terraform_1.8.5_linux_arm64.zip
-                            unzip terraform_1.8.5_linux_arm64.zip
+                            # ✨ เพิ่มออปชัน -o ตรงนี้เพื่อบังคับ Overwrite ทับไฟล์เก่าทันที
+                            unzip -o terraform_1.8.5_linux_arm64.zip
                             install -o root -g root -m 0755 terraform /usr/local/bin/terraform
-                            rm -f terraform_1.8.5_linux_arm64.zip terraform
+                            rm -f terraform_1.8.5_linux_arm64.zip terraform LICENSE.txt
                         fi
                         
                         # 2. ติดตั้ง Ansible ผ่าน pip เพื่อความเสถียรบนระบบใหม่
