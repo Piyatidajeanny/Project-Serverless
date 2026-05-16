@@ -11,6 +11,8 @@ terraform {
 
 provider "kubernetes" {
   config_path = var.kubeconfig_path
+  # ✨ เพิ่มบรรทัดนี้เพื่อข้ามการตรวจสอบใบเซอร์ SSL ใน Docker Desktop จำลอง
+  insecure    = true
 }
 
 # ============================================
