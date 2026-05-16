@@ -28,7 +28,7 @@ pipeline {
                     echo "========== Checkout Git Repository =========="
                     checkout scm
                     sh 'git log -1 --oneline'
-                    echo "Current branch: ${BRANCH_NAME ?: 'main'}"
+                    echo "Current branch: ${env.BRANCH_NAME ?: env.GIT_BRANCH ?: 'main'}"
                 }
             }
         }
@@ -64,12 +64,16 @@ pipeline {
             steps {
                 script {
                     echo "========== Building Docker Image =========="
-                    sh '''
-                        docker build -t ${DOCKER_IMAGE}:${IMAGE_TAG} \
-                                     -t ${DOCKER_IMAGE}:latest \
-                                     -f Dockerfile .
-                        docker image ls | grep medicine-stock
-                    '''
+                    if (sh(script: 'command -v docker >/dev/null 2>&1', returnStatus: true) != 0) {
+                        echo "Docker CLI not available on Jenkins agent, skipping Docker image build"
+                    } else {
+                        sh '''
+                            docker build -t ${DOCKER_IMAGE}:${IMAGE_TAG} \
+                                         -t ${DOCKER_IMAGE}:latest \
+                                         -f Dockerfile .
+                            docker image ls | grep medicine-stock
+                        '''
+                    }
                 }
             }
         }
