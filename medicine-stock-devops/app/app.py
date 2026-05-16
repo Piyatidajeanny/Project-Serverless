@@ -377,7 +377,7 @@ def delete_drug(drug_id):
 
 @app.route("/drugs/expiring-soon", methods=["GET"])
 def get_expiring_drugs():
-    days = int(request.args.get("days", 180))
+    days = int(request.args.get("days", 100))
 
     today = datetime.now().date()
     warning_date = today + timedelta(days=days)
@@ -411,7 +411,7 @@ def get_low_stock_drugs():
     cursor.execute("""
         SELECT * FROM drugs
         WHERE quantity <= min_stock
-        ORDER BY quantity ASC
+        ORDER BY quantity DSC
     """)
 
     rows = cursor.fetchall()
