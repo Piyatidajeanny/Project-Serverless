@@ -3,7 +3,7 @@ pipeline {
     
     environment {
         DOCKER_IMAGE = "natthaphong4101/medicine-stock" 
-    DOCKER_REGISTRY = "docker.io"
+        DOCKER_REGISTRY = "docker.io"
         DOCKER_CREDENTIALS = credentials('dockerhub-credentials')
         KUBE_NAMESPACE = "medicine-stock"
         DB_PATH = "/app/medicine.db"
@@ -28,7 +28,6 @@ pipeline {
                     echo "========== Checkout Git Repository =========="
                     checkout scm
                     sh 'git log -1 --oneline'
-                    // ใช้ env.GIT_BRANCH เพื่อดึงชื่อ Branch ในโปรเจกต์ธรรมดาอย่างปลอดภัย
                     echo "Current branch: ${env.GIT_BRANCH ?: 'main'}"
                 }
             }
@@ -57,7 +56,6 @@ pipeline {
             steps {
                 script {
                     echo "========== Installing Docker CLI & Building Image =========="
-                    // สั่งลง Docker CLI สดๆ ก่อนสั่ง Build
                     sh """
                         apt-get update && apt-get install -y docker.io || true
                         cd medicine-stock-devops
@@ -74,7 +72,6 @@ pipeline {
             steps {
                 script {
                     echo "========== Container Security Scan =========="
-                    // ใช้ตัวแปรสคริปต์ตรวจสอบก่อนส่งเข้าคำสั่ง sh
                     sh """
                         if [ -x "\$(command -v trivy)" ]; then
                             trivy image --exit-code 0 --severity CRITICAL,HIGH ${DOCKER_IMAGE}:${params.IMAGE_TAG}
@@ -123,7 +120,6 @@ pipeline {
                         if ! command -v terraform &> /dev/null; then
                             echo "Downloading Terraform Binary..."
                             curl -LO https://releases.hashicorp.com/terraform/1.8.5/terraform_1.8.5_linux_arm64.zip
-                            # ✨ เพิ่มออปชัน -o ตรงนี้เพื่อบังคับ Overwrite ทับไฟล์เก่าทันที
                             unzip -o terraform_1.8.5_linux_arm64.zip
                             install -o root -g root -m 0755 terraform /usr/local/bin/terraform
                             rm -f terraform_1.8.5_linux_arm64.zip terraform LICENSE.txt
@@ -133,11 +129,10 @@ pipeline {
                         if ! command -v ansible-playbook &> /dev/null; then
                             echo "Installing Ansible via pip..."
                             pip3 install ansible --break-system-packages || pip3 install ansible || true
-                            # ทำการลิงก์คำสั่งเข้าพาร์ทหลักระบบ
                             ln -s /root/.local/bin/ansible-playbook /usr/local/bin/ansible-playbook || true
                         fi
                         
-                        # 3. ติดตั้ง Kubectl แบบดาวน์โหลดตรง (จากรอบที่แล้วที่รันผ่านแล้ว)
+                        # 3. ติดตั้ง Kubectl แบบดาวน์โหลดตรง
                         if ! command -v kubectl &> /dev/null; then
                             echo "Downloading Kubectl Binary..."
                             curl -LO "https://dl.k8s.io/release/v1.36.1/bin/linux/arm64/kubectl"
@@ -145,7 +140,6 @@ pipeline {
                             rm -f kubectl
                         fi
                         
-                        # พิมพ์ยืนยันระบบเครื่องมือ
                         terraform --version
                         kubectl version --client
                     '''
@@ -169,12 +163,13 @@ pipeline {
                     
                     echo ">>> Step 3: Kubernetes Application Deployment..."
                     sh """
+                        # ✨ เติม --insecure-skip-tls-verify=true เพื่อให้ kubectl ข้ามด่านเช็คใบเซอร์ SSL บนตู้จำลอง
                         kubectl set image deployment/medicine-stock \
                                 medicine-stock=${DOCKER_IMAGE}:${params.IMAGE_TAG} \
-                                -n ${KUBE_NAMESPACE} || \
-                        kubectl apply -f medicine-stock-devops/k8s/deployment.yaml -n ${KUBE_NAMESPACE}
+                                -n ${KUBE_NAMESPACE} --insecure-skip-tls-verify=true || \
+                        kubectl apply -f medicine-stock-devops/k8s/deployment.yaml -n ${KUBE_NAMESPACE} --insecure-skip-tls-verify=true
                         
-                        kubectl apply -f medicine-stock-devops/k8s/service.yaml -n ${KUBE_NAMESPACE}
+                        kubectl apply -f medicine-stock-devops/k8s/service.yaml -n ${KUBE_NAMESPACE} --insecure-skip-tls-verify=true
                     """
                 }
             }
