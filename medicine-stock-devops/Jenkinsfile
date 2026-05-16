@@ -40,7 +40,7 @@ pipeline {
                     echo "========== Running Unit Tests =========="
                     try {
                         sh '''
-                            cd app
+                            cd medicine-stock-devops/app
                             python -m pytest test_app.py -v --tb=short --junit-xml=test-results.xml
                         '''
                     } catch (Exception e) {
