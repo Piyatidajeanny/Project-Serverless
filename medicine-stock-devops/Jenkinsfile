@@ -29,7 +29,7 @@ pipeline {
                     echo "========== Checkout Git Repository =========="
                     checkout scm
                     sh 'git log -1 --oneline'
-                    echo "Current branch: ${BRANCH_NAME ?: 'yeenny'}"
+                    echo "Current branch: ${env.BRANCH_NAME ?: 'yeenny'}"
                 }
             }
         }
