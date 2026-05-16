@@ -2,11 +2,11 @@ pipeline {
     agent any
     
     environment {
-        DOCKER_IMAGE = "your-dockerhub-username/medicine-stock"
+        DOCKER_IMAGE = "piyatida26/medicine-stock-api:latest"
         DOCKER_TAG = "${BUILD_NUMBER}"
         DOCKER_REGISTRY = "docker.io"
         DOCKER_CREDENTIALS = credentials('dockerhub-credentials')
-        KUBE_NAMESPACE = "default"
+        KUBE_NAMESPACE = "medicine-stock"
         DB_PATH = "/app/medicine.db"
     }
     
@@ -29,7 +29,7 @@ pipeline {
                     echo "========== Checkout Git Repository =========="
                     checkout scm
                     sh 'git log -1 --oneline'
-                    echo "Current branch: ${BRANCH_NAME ?: 'main'}"
+                    echo "Current branch: ${BRANCH_NAME ?: 'yeenny'}"
                 }
             }
         }
